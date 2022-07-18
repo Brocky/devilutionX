@@ -110,13 +110,15 @@ std::string GetTooltipString()
 
 std::string GetPlayerAssetString()
 {
-	char heroChar = CharChar[static_cast<int>(MyPlayer->_pClass)];
-	char armourChar = ArmourChar[tracked_data.playerGfx >> 4];
-	char wpnChar = WepChar[tracked_data.playerGfx & 0xF];
-
-	std::string result = fmt::format("{}{}{}as", heroChar, armourChar, wpnChar);
-	std::transform(std::begin(result), std::end(result), std::begin(result), [](char c) { return static_cast<char>(std::tolower(c)); });
-	return result;
+	constexpr char CaseDistance = 'a' - 'A';
+	char chars[5] {
+		static_cast<char>(CharChar[static_cast<int>(MyPlayer->_pClass)] - CaseDistance),
+		static_cast<char>(ArmourChar[tracked_data.playerGfx >> 4] - CaseDistance),
+		static_cast<char>(WepChar[tracked_data.playerGfx & 0xF] - CaseDistance),
+		'a',
+		's'
+	};
+	return std::string(chars, 5);
 }
 
 void ResetStartTime()

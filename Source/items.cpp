@@ -1333,8 +1333,8 @@ void GetItemBonus(Item &item, int minlvl, int maxlvl, bool onlygood, bool allows
 
 int RndUItem(Monster *monster)
 {
-	if (monster != nullptr && (monster->data().mTreasure & T_UNIQ) != 0 && !gbIsMultiplayer)
-		return -((monster->data().mTreasure & T_MASK) + 1);
+	if (monster != nullptr && (monster->data().treasure & T_UNIQ) != 0 && !gbIsMultiplayer)
+		return -((monster->data().treasure & T_MASK) + 1);
 
 	int ril[512];
 
@@ -1728,12 +1728,6 @@ void PrintItemOil(char iDidx)
 	case IMISC_HEAL:
 		AddPanelString(_("restore some life"));
 		break;
-	case IMISC_OLDHEAL:
-		AddPanelString(_("recover life"));
-		break;
-	case IMISC_DEADHEAL:
-		AddPanelString(_("deadly heal"));
-		break;
 	case IMISC_MANA:
 		AddPanelString(_("restore some mana"));
 		break;
@@ -1751,16 +1745,6 @@ void PrintItemOil(char iDidx)
 		break;
 	case IMISC_ELIXVIT:
 		AddPanelString(_("increase vitality"));
-		break;
-	case IMISC_ELIXWEAK:
-	case IMISC_ELIXDIS:
-		AddPanelString(_("decrease strength"));
-		break;
-	case IMISC_ELIXCLUM:
-		AddPanelString(_("decrease dexterity"));
-		break;
-	case IMISC_ELIXSICK:
-		AddPanelString(_("decrease vitality"));
 		break;
 	case IMISC_REJUV:
 		AddPanelString(_("restore some life and mana"));
@@ -3011,10 +2995,10 @@ void SetupItem(Item &item)
 
 int RndItem(const Monster &monster)
 {
-	if ((monster.data().mTreasure & T_UNIQ) != 0)
-		return -((monster.data().mTreasure & T_MASK) + 1);
+	if ((monster.data().treasure & T_UNIQ) != 0)
+		return -((monster.data().treasure & T_MASK) + 1);
 
-	if ((monster.data().mTreasure & T_NODROP) != 0)
+	if ((monster.data().treasure & T_NODROP) != 0)
 		return 0;
 
 	if (GenerateRnd(100) > 40)
@@ -3074,7 +3058,7 @@ void SpawnItem(Monster &monster, Point position, bool sendmsg)
 	int idx;
 	bool onlygood = true;
 
-	if (monster.isUnique() || ((monster.data().mTreasure & T_UNIQ) != 0 && gbIsMultiplayer)) {
+	if (monster.isUnique() || ((monster.data().treasure & T_UNIQ) != 0 && gbIsMultiplayer)) {
 		idx = RndUItem(&monster);
 		if (idx < 0) {
 			SpawnUnique((_unique_items) - (idx + 1), position);
@@ -3105,7 +3089,7 @@ void SpawnItem(Monster &monster, Point position, bool sendmsg)
 	GetSuperItemSpace(position, ii);
 	int uper = monster.isUnique() ? 15 : 1;
 
-	int8_t mLevel = monster.data().mLevel;
+	int8_t mLevel = monster.data().level;
 	if (!gbIsHellfire && monster.type().type == MT_DIABLO)
 		mLevel -= 15;
 
@@ -3855,7 +3839,6 @@ void UseItem(int pnum, item_misc_id mid, spell_id spl)
 
 	switch (mid) {
 	case IMISC_HEAL:
-	case IMISC_FOOD:
 		player.RestorePartialLife();
 		if (&player == MyPlayer) {
 			drawhpflag = true;

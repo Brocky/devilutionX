@@ -13,7 +13,6 @@
 #include "engine/render/automap_render.hpp"
 #include "levels/gendung.h"
 #include "levels/setmaps.h"
-#include "miniwin/miniwin.h"
 #include "player.h"
 #include "utils/language.h"
 #include "utils/stdcompat/algorithm.hpp"
@@ -480,9 +479,9 @@ void DrawAutomapText(const Surface &out)
 	Point linePosition { 8, 8 };
 
 	if (gbIsMultiplayer) {
-		if (strcasecmp("0.0.0.0", szPlayerName) != 0) {
+		if (GameName != "0.0.0.0") {
 			std::string description = std::string(_("Game: "));
-			description.append(szPlayerName);
+			description.append(GameName);
 			DrawString(out, description, linePosition);
 			linePosition.y += 15;
 		}
@@ -490,7 +489,7 @@ void DrawAutomapText(const Surface &out)
 		std::string description;
 		if (!PublicGame) {
 			description = std::string(_("Password: "));
-			description.append(szPlayerDescript);
+			description.append(GamePassword);
 		} else {
 			description = std::string(_("Public Game"));
 		}
@@ -738,7 +737,7 @@ void DrawAutomap(const Surface &out)
 
 	for (int playerId = 0; playerId < MAX_PLRS; playerId++) {
 		Player &player = Players[playerId];
-		if (player.isOnActiveLevel() && player.plractive && !player._pLvlChanging && (&player == &myPlayer || player.friendlyMode)) {
+		if (player.isOnActiveLevel() && player.plractive && !player._pLvlChanging && (&player == MyPlayer || player.friendlyMode)) {
 			DrawAutomapPlr(out, myPlayerOffset, playerId);
 		}
 	}

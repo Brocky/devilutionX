@@ -21,10 +21,12 @@
 #include "monstdat.h"
 #include "spelldat.h"
 #include "textdat.h"
+#include "utils/language.h"
 
 namespace devilution {
 
 struct Missile;
+struct Player;
 
 constexpr size_t MaxMonsters = 200;
 constexpr size_t MaxLvlMTypes = 24;
@@ -149,11 +151,16 @@ struct AnimStruct {
 };
 
 struct CMonster {
+	std::unique_ptr<byte[]> animData;
+	AnimStruct anims[6];
+	std::unique_ptr<TSnd> sounds[4][2];
+	const MonsterData *data;
+
 	_monster_id type;
 	/** placeflag enum as a flags*/
 	uint8_t placeFlags;
-	std::unique_ptr<byte[]> animData;
-	AnimStruct anims[6];
+	int8_t corpseId;
+
 	/**
 	 * @brief Returns AnimStruct for specified graphic
 	 */
@@ -161,37 +168,16 @@ struct CMonster {
 	{
 		return anims[static_cast<int>(graphic)];
 	}
-	std::unique_ptr<TSnd> sounds[4][2];
-	int8_t corpseId;
-	const MonsterData *data;
 };
 
 extern CMonster LevelMonsterTypes[MaxLvlMTypes];
 
 struct Monster { // note: missing field _mAFNum
-	const char *name;
 	std::unique_ptr<uint8_t[]> uniqueMonsterTRN;
 	/**
 	 * @brief Contains information for current animation
 	 */
 	AnimationInfo animInfo;
-	/** Specifies current goal of the monster */
-	MonsterGoal goal;
-	/** Specifies monster's behaviour regarding moving and changing goals. */
-	int goalVar1;
-	/**
-	 * @brief Specifies turning direction for @p RoundWalk in most cases.
-	 * Used in custom way by @p FallenAi, @p SnakeAi, @p M_FallenFear and @p FallenAi.
-	 */
-	int goalVar2;
-	/**
-	 * @brief Controls monster's behaviour regarding special actions.
-	 * Used only by @p ScavengerAi and @p MegaAi.
-	 */
-	int goalVar3;
-	int var1;
-	int var2;
-	int var3;
 	int maxHitPoints;
 	int hitPoints;
 	uint32_t flags;
@@ -200,11 +186,34 @@ struct Monster { // note: missing field _mAFNum
 	/** Seed used to determine AI behaviour/sync sounds in multiplayer games? */
 	uint32_t aiSeed;
 	uint16_t exp;
-	uint16_t hit;
-	uint16_t hit2;
-	uint16_t magicResistance;
+	uint16_t toHit;
+	uint16_t toHitSpecial;
+	uint16_t resistance;
 	_speech_id talkMsg;
+
+	/** @brief Specifies monster's behaviour regarding moving and changing goals. */
+	int16_t goalVar1;
+
+	/**
+	 * @brief Specifies turning direction for @p RoundWalk in most cases.
+	 * Used in custom way by @p FallenAi, @p SnakeAi, @p M_FallenFear and @p FallenAi.
+	 */
+	int8_t goalVar2;
+
+	/**
+	 * @brief Controls monster's behaviour regarding special actions.
+	 * Used only by @p ScavengerAi and @p MegaAi.
+	 */
+	int8_t goalVar3;
+
+	int16_t var1;
+	int16_t var2;
+	int8_t var3;
+
 	ActorPosition position;
+
+	/** Specifies current goal of the monster */
+	MonsterGoal goal;
 
 	/** Usually corresponds to the enemy's future position */
 	WorldTilePosition enemyPosition;
@@ -232,8 +241,8 @@ struct Monster { // note: missing field _mAFNum
 	int8_t level;
 	uint8_t minDamage;
 	uint8_t maxDamage;
-	uint8_t minDamage2;
-	uint8_t maxDamage2;
+	uint8_t minDamageSpecial;
+	uint8_t maxDamageSpecial;
 	uint8_t armorClass;
 	uint8_t leader;
 	LeaderRelation leaderRelation;
@@ -251,7 +260,7 @@ struct Monster { // note: missing field _mAFNum
 	{
 		auto &animationData = type().getAnimData(graphic);
 
-		// Passing the Frames and rate properties here is only relevant when initialising a monster, but doesn't cause any harm when switching animations.
+		// Passing the frames and rate properties here is only relevant when initialising a monster, but doesn't cause any harm when switching animations.
 		this->animInfo.changeAnimationData(animationData.getCelSpritesForDirection(desiredDirection), animationData.frames, animationData.rate);
 	}
 
@@ -283,6 +292,19 @@ struct Monster { // note: missing field _mAFNum
 	const MonsterData &data() const
 	{
 		return *type().data;
+	}
+
+	/**
+	 * @brief Returns monster's name
+	 * Internally it returns a name stored in global array of monsters' data.
+	 * @return Monster's name
+	 */
+	string_view name() const
+	{
+		if (uniqueType != UniqueMonsterType::None)
+			return pgettext("monster", UniqueMonstersData[static_cast<int8_t>(uniqueType)].mName);
+
+		return pgettext("monster", data().name);
 	}
 
 	/**
@@ -333,10 +355,11 @@ extern size_t ActiveMonsterCount;
 extern int MonsterKillCounts[MaxMonsters];
 extern bool sgbSaveSoundOn;
 
-void PrepareUniqueMonst(Monster &monster, UniqueMonsterType monsterType, int miniontype, int bosspacksize, const UniqueMonsterData &uniqueMonsterData);
+void PrepareUniqueMonst(Monster &monster, UniqueMonsterType monsterType, size_t miniontype, int bosspacksize, const UniqueMonsterData &uniqueMonsterData);
 void InitLevelMonsters();
 void GetLevelMTypes();
-void InitMonsterGFX(size_t monsterTypeIndex);
+void InitMonsterSND(CMonster &monsterType);
+void InitMonsterGFX(CMonster &monsterType);
 void WeakenNaKrul();
 void InitGolems();
 void InitMonsters();
@@ -348,10 +371,11 @@ void M_StartStand(Monster &monster, Direction md);
 void M_ClearSquares(const Monster &monster);
 void M_GetKnockback(Monster &monster);
 void M_StartHit(Monster &monster, int dam);
-void M_StartHit(Monster &monster, int pnum, int dam);
-void StartMonsterDeath(Monster &monster, int pnum, bool sendmsg);
-void M_StartKill(Monster &monster, int pnum);
-void M_SyncStartKill(int monsterId, Point position, int pnum);
+void M_StartHit(Monster &monster, const Player &player, int dam);
+void StartMonsterDeath(Monster &monster, const Player &player, bool sendmsg);
+void MonsterDeath(Monster &monster, Direction md, bool sendmsg);
+void M_StartKill(Monster &monster, const Player &player);
+void M_SyncStartKill(int monsterId, Point position, const Player &player);
 void M_UpdateRelations(const Monster &monster);
 void DoEnding();
 void PrepDoEnding();
@@ -382,7 +406,7 @@ bool IsGoat(_monster_id mt);
 bool SpawnSkeleton(Monster *monster, Point position);
 Monster *PreSpawnSkeleton();
 void TalktoMonster(Monster &monster);
-void SpawnGolem(int id, Point position, Missile &missile);
+void SpawnGolem(Player &player, Monster &golem, Point position, Missile &missile);
 bool CanTalkToMonst(const Monster &monster);
 int encode_enemy(Monster &monster);
 void decode_enemy(Monster &monster, int enemyId);

@@ -3,8 +3,6 @@
 #include <algorithm>
 #include <string>
 
-#include <fmt/compile.h>
-
 #include "DiabloUI/art_draw.h"
 #include "DiabloUI/button.h"
 #include "DiabloUI/dialogs.h"
@@ -28,6 +26,7 @@
 #include "utils/sdl_compat.h"
 #include "utils/sdl_geometry.h"
 #include "utils/sdl_wrap.h"
+#include "utils/str_cat.hpp"
 #include "utils/stubs.h"
 #include "utils/utf8.hpp"
 
@@ -54,7 +53,6 @@ std::optional<OwnedPcxSprite> ArtBackgroundWidescreen;
 std::optional<OwnedPcxSpriteSheet> ArtBackground;
 Art ArtCursor;
 
-void (*gfnSoundFunction)(const char *file);
 bool textInputActive = true;
 std::size_t SelectedItem = 0;
 
@@ -184,14 +182,12 @@ void UiInitList_clear()
 
 void UiPlayMoveSound()
 {
-	if (gfnSoundFunction != nullptr)
-		gfnSoundFunction("sfx\\items\\titlemov.wav");
+	effects_play_sound(IS_TITLEMOV);
 }
 
 void UiPlaySelectSound()
 {
-	if (gfnSoundFunction != nullptr)
-		gfnSoundFunction("sfx\\items\\titlslct.wav");
+	effects_play_sound(IS_TITLSLCT);
 }
 
 namespace {
@@ -550,7 +546,7 @@ void LoadHeros()
 
 	for (size_t i = 0; i <= enum_size<HeroClass>::value; ++i) {
 		char portraitPath[18];
-		*fmt::format_to(portraitPath, FMT_COMPILE("ui_art\\hero{}.pcx"), i) = '\0';
+		*BufCopy(portraitPath, "ui_art\\hero", i, ".pcx") = '\0';
 
 		SDL_RWops *handle = OpenAsset(portraitPath);
 		if (handle == nullptr) {

@@ -26,7 +26,6 @@
 #include "inv.h"
 #include "lighting.h"
 #include "menu.h"
-#include "miniwin/miniwin.h"
 #include "missiles.h"
 #include "mpq/mpq_writer.hpp"
 #include "pfile.h"
@@ -577,9 +576,9 @@ void LoadMonster(LoadHelper *file, Monster &monster)
 	monster.mode = static_cast<MonsterMode>(file->NextLE<int32_t>());
 	monster.goal = static_cast<MonsterGoal>(file->NextLE<uint8_t>());
 	file->Skip(3); // Alignment
-	monster.goalVar1 = file->NextLE<int32_t>();
-	monster.goalVar2 = file->NextLE<int32_t>();
-	monster.goalVar3 = file->NextLE<int32_t>();
+	monster.goalVar1 = file->NextLENarrow<int32_t, int16_t>();
+	monster.goalVar2 = file->NextLENarrow<int32_t, int8_t>();
+	monster.goalVar3 = file->NextLENarrow<int32_t, int8_t>();
 	file->Skip(4); // Unused
 	monster.pathCount = file->NextLE<uint8_t>();
 	file->Skip(3); // Alignment
@@ -608,11 +607,11 @@ void LoadMonster(LoadHelper *file, Monster &monster)
 	monster.animInfo.currentFrame = file->NextLENarrow<int32_t, int8_t>(-1);
 	file->Skip(4); // Skip _meflag
 	monster.isInvalid = file->NextBool32();
-	monster.var1 = file->NextLE<int32_t>();
-	monster.var2 = file->NextLE<int32_t>();
-	monster.var3 = file->NextLE<int32_t>();
-	monster.position.temp.x = file->NextLE<int32_t>();
-	monster.position.temp.y = file->NextLE<int32_t>();
+	monster.var1 = file->NextLENarrow<int32_t, int16_t>();
+	monster.var2 = file->NextLENarrow<int32_t, int16_t>();
+	monster.var3 = file->NextLENarrow<int32_t, int8_t>();
+	monster.position.temp.x = file->NextLENarrow<int32_t, WorldTileCoord>();
+	monster.position.temp.y = file->NextLENarrow<int32_t, WorldTileCoord>();
 	monster.position.offset2.deltaX = file->NextLE<int32_t>();
 	monster.position.offset2.deltaY = file->NextLE<int32_t>();
 	file->Skip(4); // Skip actionFrame
@@ -642,17 +641,17 @@ void LoadMonster(LoadHelper *file, Monster &monster)
 	monster.exp = file->NextLE<uint16_t>();
 
 	if ((monster.flags & MFLAG_GOLEM) != 0) // Don't skip for golems
-		monster.hit = file->NextLE<uint8_t>();
+		monster.toHit = file->NextLE<uint8_t>();
 	else
 		file->Skip(1); // Skip hit as it's already initialized
 	monster.minDamage = file->NextLE<uint8_t>();
 	monster.maxDamage = file->NextLE<uint8_t>();
-	file->Skip(1); // Skip hit2 as it's already initialized
-	monster.minDamage2 = file->NextLE<uint8_t>();
-	monster.maxDamage2 = file->NextLE<uint8_t>();
+	file->Skip(1); // Skip toHitSpecial as it's already initialized
+	monster.minDamageSpecial = file->NextLE<uint8_t>();
+	monster.maxDamageSpecial = file->NextLE<uint8_t>();
 	monster.armorClass = file->NextLE<uint8_t>();
 	file->Skip(1); // Alignment
-	monster.magicResistance = file->NextLE<uint16_t>();
+	monster.resistance = file->NextLE<uint16_t>();
 	file->Skip(2); // Alignment
 
 	monster.talkMsg = static_cast<_speech_id>(file->NextLE<int32_t>());
@@ -667,7 +666,7 @@ void LoadMonster(LoadHelper *file, Monster &monster)
 	if (monster.lightId == 0)
 		monster.lightId = NO_LIGHT; // Correct incorect values in old saves
 
-	// Omit pointer mName;
+	// Omit pointer name;
 
 	if (gbSkipSync)
 		return;
@@ -922,7 +921,7 @@ void GetPermLevelNames(char *szPerm)
 
 bool LevelFileExists(MpqWriter &archive)
 {
-	char szName[MAX_PATH];
+	char szName[MaxMpqPathSize];
 
 	GetTempLevelNames(szName);
 	if (archive.HasFile(szName))
@@ -1391,15 +1390,15 @@ void SaveMonster(SaveHelper *file, Monster &monster)
 	file->Skip(1); // Alignment
 	file->WriteLE<uint16_t>(monster.exp);
 
-	file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.hit, std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
+	file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.toHit, std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
 	file->WriteLE<uint8_t>(monster.minDamage);
 	file->WriteLE<uint8_t>(monster.maxDamage);
-	file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.hit2, std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
-	file->WriteLE<uint8_t>(monster.minDamage2);
-	file->WriteLE<uint8_t>(monster.maxDamage2);
+	file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.toHitSpecial, std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
+	file->WriteLE<uint8_t>(monster.minDamageSpecial);
+	file->WriteLE<uint8_t>(monster.maxDamageSpecial);
 	file->WriteLE<uint8_t>(monster.armorClass);
 	file->Skip(1); // Alignment
-	file->WriteLE<uint16_t>(monster.magicResistance);
+	file->WriteLE<uint16_t>(monster.resistance);
 	file->Skip(2); // Alignment
 
 	file->WriteLE<int32_t>(monster.talkMsg == TEXT_NONE ? 0 : monster.talkMsg);       // Replicate original bad mapping of none for monsters
@@ -1412,7 +1411,7 @@ void SaveMonster(SaveHelper *file, Monster &monster)
 	else
 		file->WriteLE<int8_t>(monster.lightId);
 
-	// Omit pointer mName;
+	// Omit pointer name;
 }
 
 void SaveMissile(SaveHelper *file, const Missile &missile)
@@ -2079,7 +2078,7 @@ void LoadGame(bool firstflag)
 	}
 
 	LoadGameLevel(firstflag, ENTRY_LOAD);
-	SyncInitPlr(MyPlayerId);
+	SyncInitPlr(myPlayer);
 	SyncPlrAnim(myPlayer);
 
 	ViewPosition = { viewX, viewY };
@@ -2466,7 +2465,7 @@ void SaveLevel(MpqWriter &saveWriter)
 	if (leveltype == DTYPE_TOWN)
 		glSeedTbl[0] = AdvanceRndSeed();
 
-	char szName[MAX_PATH];
+	char szName[MaxMpqPathSize];
 	GetTempLevelNames(szName);
 	SaveHelper file(saveWriter, szName, 256 * 1024);
 
@@ -2533,7 +2532,7 @@ void SaveLevel(MpqWriter &saveWriter)
 
 void LoadLevel()
 {
-	char szName[MAX_PATH];
+	char szName[MaxMpqPathSize];
 	std::optional<MpqArchive> archive = OpenSaveArchive(gSaveNumber);
 	GetTempLevelNames(szName);
 	if (!archive || !archive->HasFile(szName))

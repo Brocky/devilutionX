@@ -97,7 +97,7 @@ void PrintDebugMonster(int m)
 	auto &monster = Monsters[m];
 
 	EventPlrMsg(StrCat(
-	                "Monster ", m, " = ", monster.name,
+	                "Monster ", m, " = ", monster.name(),
 	                "\nX = ", monster.position.tile.x, ", Y = ", monster.position.tile.y,
 	                "\nEnemy = ", monster.enemy, ", HP = ", monster.hitPoints,
 	                "\nMode = ", static_cast<int>(monster.mode), ", Var1 = ", monster.var1),
@@ -122,7 +122,6 @@ void ProcessMessages()
 			gbRunGame = false;
 			break;
 		}
-		TranslateMessage(&msg);
 		PushMessage(&msg);
 	}
 }
@@ -208,7 +207,7 @@ std::string DebugCmdWarpToLevel(const string_view parameter)
 	if (!setlevel && myPlayer.isOnLevel(level))
 		return StrCat("I did nothing but fulfilled your wish. You are already at level ", level, ".");
 
-	StartNewLvl(MyPlayerId, (level != 21) ? interface_mode::WM_DIABNEXTLVL : interface_mode::WM_DIABTOWNWARP, level);
+	StartNewLvl(myPlayer, (level != 21) ? interface_mode::WM_DIABNEXTLVL : interface_mode::WM_DIABTOWNWARP, level);
 	return StrCat("Welcome to level ", level, ".");
 }
 
@@ -235,12 +234,12 @@ std::string DebugCmdLoadQuestMap(const string_view parameter)
 			continue;
 
 		if (!MyPlayer->isOnLevel(quest._qlevel)) {
-			StartNewLvl(MyPlayerId, (quest._qlevel != 21) ? interface_mode::WM_DIABNEXTLVL : interface_mode::WM_DIABTOWNWARP, quest._qlevel);
+			StartNewLvl(*MyPlayer, (quest._qlevel != 21) ? interface_mode::WM_DIABNEXTLVL : interface_mode::WM_DIABTOWNWARP, quest._qlevel);
 			ProcessMessages();
 		}
 
 		setlvltype = quest._qlvltype;
-		StartNewLvl(MyPlayerId, WM_DIABSETLVL, level);
+		StartNewLvl(*MyPlayer, WM_DIABSETLVL, level);
 
 		return StrCat("Welcome to ", QuestLevelNames[level], ".");
 	}
@@ -284,7 +283,7 @@ std::string DebugCmdLoadMap(const string_view parameter)
 	setlvltype = static_cast<dungeon_type>(mapType);
 	ViewPosition = spawn;
 
-	StartNewLvl(MyPlayerId, WM_DIABSETLVL, SL_NONE);
+	StartNewLvl(*MyPlayer, WM_DIABSETLVL, SL_NONE);
 
 	return "Welcome to this unique place.";
 }
@@ -706,11 +705,12 @@ std::string DebugCmdSpawnUniqueMonster(const string_view parameter)
 	}
 
 	if (!found) {
-		LevelMonsterTypes[id].type = static_cast<_monster_id>(mtype);
-		InitMonsterGFX(id);
-		InitMonsterSND(id);
-		LevelMonsterTypes[id].placeFlags |= PLACE_SCATTER;
-		LevelMonsterTypes[id].corpseId = 1;
+		CMonster &monsterType = LevelMonsterTypes[id];
+		monsterType.type = static_cast<_monster_id>(mtype);
+		InitMonsterGFX(monsterType);
+		InitMonsterSND(monsterType);
+		monsterType.placeFlags |= PLACE_SCATTER;
+		monsterType.corpseId = 1;
 	}
 
 	Player &myPlayer = *MyPlayer;
@@ -767,7 +767,7 @@ std::string DebugCmdSpawnMonster(const string_view parameter)
 
 	for (int i = 0; i < NUM_MTYPES; i++) {
 		auto mondata = MonstersData[i];
-		std::string monsterName(mondata.mName);
+		std::string monsterName(mondata.name);
 		std::transform(monsterName.begin(), monsterName.end(), monsterName.begin(), [](unsigned char c) { return std::tolower(c); });
 		if (monsterName.find(name) == std::string::npos)
 			continue;
@@ -791,11 +791,12 @@ std::string DebugCmdSpawnMonster(const string_view parameter)
 	}
 
 	if (!found) {
-		LevelMonsterTypes[id].type = static_cast<_monster_id>(mtype);
-		InitMonsterGFX(id);
-		InitMonsterSND(id);
-		LevelMonsterTypes[id].placeFlags |= PLACE_SCATTER;
-		LevelMonsterTypes[id].corpseId = 1;
+		CMonster &monsterType = LevelMonsterTypes[id];
+		monsterType.type = static_cast<_monster_id>(mtype);
+		InitMonsterGFX(monsterType);
+		InitMonsterSND(monsterType);
+		monsterType.placeFlags |= PLACE_SCATTER;
+		monsterType.corpseId = 1;
 	}
 
 	Player &myPlayer = *MyPlayer;

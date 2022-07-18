@@ -30,7 +30,7 @@ void play_movie(const char *pszMovie, bool userCanClose)
 
 	sound_disable_music(true);
 	stream_stop();
-	effects_play_sound("Sfx\\Misc\\blank.wav");
+	effects_play_sound(SFX_SILENCE);
 
 	if (IsHardwareCursorEnabled() && ControlDevice == ControlTypes::KeyboardAndMouse) {
 		SetHardwareCursorVisible(false);
@@ -44,7 +44,7 @@ void play_movie(const char *pszMovie, bool userCanClose)
 				case DVL_WM_KEYDOWN:
 				case DVL_WM_LBUTTONUP:
 				case DVL_WM_RBUTTONUP:
-					if (userCanClose || (msg.message == DVL_WM_KEYDOWN && msg.wParam == DVL_VK_ESCAPE))
+					if (userCanClose || (msg.message == DVL_WM_KEYDOWN && msg.wParam == SDLK_ESCAPE))
 						movie_playing = false;
 					break;
 				case DVL_WM_QUIT:
