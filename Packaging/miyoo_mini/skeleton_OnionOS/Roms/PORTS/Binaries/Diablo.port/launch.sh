@@ -13,11 +13,11 @@ if [ -f "./FILES_HERE/DIABDAT.MPQ" ] || [ -f "./FILES_HERE/spawn.mpq" ]; then
 
 	export LD_LIBRARY_PATH="$progdir/lib:$LD_LIBRARY_PATH"
 	SDL_HIDE_BATTERY=1 $progdir/devilutionx --data-dir $progdir/FILES_HERE --save-dir $savedir --config-dir $configdir
-  
+
 	# Timer registration
 	cd /mnt/SDCARD/App/PlayActivity
 	./playActivity "Diablo"
 else
-	cd "/mnt/SDCARD/Emu/PORTS/Binaries/missingFile"
+	cd "/mnt/SDCARD/Roms/PORTS/Binaries/missingFile"
 	./infoPanel
 fi
